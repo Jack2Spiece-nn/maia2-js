@@ -34,7 +34,6 @@ class Maia {
 
     // Create tensors for model input
     const boardTensor = new ort.Tensor("float32", boardInput, [1, 18, 8, 8]);
-    console.log(boardTensor.dims);
     // console.log(boardTensor);
     const eloSelfTensor = new ort.Tensor(
       "int64",
@@ -46,8 +45,6 @@ class Maia {
       new BigInt64Array([BigInt(eloOppoCategory)]),
       [1]
     );
-
-    console.log(boardTensor);
 
     // Load and run the model
     const feeds = {
@@ -87,12 +84,9 @@ class Maia {
     for (const moveIdx of legalMoveIndices) {
       let move = allPossibleMovesReversed[moveIdx];
       if (blackFlag) move = mirrorMove(move);
-      console.log(moveIdx, move, probs[moveIdx].toFixed(4));
+
       legalMovesMirrored.push(move);
     }
-
-    console.log(legalMoveIndices);
-    console.log(legalMovesMirrored);
 
     const moveProbs = {};
     legalMoveIndices.forEach((moveIdx, i) => {
@@ -103,6 +97,17 @@ class Maia {
     const sortedMoveProbs = Object.fromEntries(
       Object.entries(moveProbs).sort(([, a], [, b]) => b - a)
     );
+
+    const top10Indices = Array.from(probs)
+      .map((value, index) => ({ value, index }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10)
+      .map(({ index }) => index);
+
+    console.log("Top 10 Moves:");
+    top10Indices.forEach((index) => {
+      console.log(allPossibleMovesReversed[index], probs[index]);
+    });
 
     return {
       moveProbs: sortedMoveProbs,

@@ -8,7 +8,7 @@ prepared = inference.prepare()
 move_probs, win_prob = inference.inference_each(
     maia2_model,
     prepared,
-    "8/4pqP1/2Kp1Pk1/2bB3R/n2Pb2p/7N/3R4/8 w - - 0 1",
+    "5B2/1n6/K1P4N/P2q4/4Br1N/3Pn2R/k2p2P1/8 w - - 0 1",
     1100,
     1100,
 )
