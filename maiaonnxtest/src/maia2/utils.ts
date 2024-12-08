@@ -54,12 +54,15 @@ function boardToTensor(fen: string): Float32Array {
   const tensor = new Float32Array((12 + 6) * 8 * 8);
 
   const rows = piecePlacement.split("/");
+
+  // Adjust rank indexing
   for (let rank = 0; rank < 8; rank++) {
+    const row = 7 - rank; // Invert rank to match Python's row indexing
     let file = 0;
     for (const char of rows[rank]) {
       if (isNaN(parseInt(char))) {
         const index = pieceTypes.indexOf(char);
-        const tensorIndex = index * 64 + rank * 8 + file;
+        const tensorIndex = index * 64 + row * 8 + file;
         tensor[tensorIndex] = 1.0;
         file += 1;
       } else {
@@ -69,8 +72,10 @@ function boardToTensor(fen: string): Float32Array {
   }
 
   // Player's turn channel
-  const turnChannel = 12 * 64;
-  tensor.fill(activeColor === "w" ? 1.0 : 0.0, turnChannel, turnChannel + 64);
+  const turnChannelStart = 12 * 64;
+  const turnChannelEnd = turnChannelStart + 64;
+  const turnValue = activeColor === "w" ? 1.0 : 0.0;
+  tensor.fill(turnValue, turnChannelStart, turnChannelEnd);
 
   // Castling rights channels
   const castlingRights = [
@@ -81,7 +86,9 @@ function boardToTensor(fen: string): Float32Array {
   ];
   for (let i = 0; i < 4; i++) {
     if (castlingRights[i]) {
-      tensor.fill(1.0, (13 + i) * 64, (13 + i) * 64 + 64);
+      const channelStart = (13 + i) * 64;
+      const channelEnd = channelStart + 64;
+      tensor.fill(1.0, channelStart, channelEnd);
     }
   }
 
@@ -89,8 +96,9 @@ function boardToTensor(fen: string): Float32Array {
   const epChannel = 17 * 64;
   if (enPassantTarget !== "-") {
     const file = enPassantTarget.charCodeAt(0) - "a".charCodeAt(0);
-    const rank = 8 - parseInt(enPassantTarget[1]);
-    const index = epChannel + rank * 8 + file;
+    const rank = parseInt(enPassantTarget[1], 10) - 1; // Adjust rank indexing
+    const row = 7 - rank; // Invert rank to match tensor indexing
+    const index = epChannel + row * 8 + file;
     tensor[index] = 1.0;
   }
 

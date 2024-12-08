@@ -1,4 +1,5 @@
 import onnx
+from pprint import pprint
 import torch
 import chess
 import numpy as np
@@ -220,7 +221,7 @@ all_moves_dict = {move: i for i, move in enumerate(all_moves)}
 all_moves_dict_reversed = {v: k for k, v in all_moves_dict.items()}
 elo_dict = create_elo_dict()
 
-board = chess.Board(fen="8/4pqP1/2Kp1Pk1/2bB3R/n2Pb2p/7N/3R4/8 w - - 0 1")
+board = chess.Board(fen=input("Enter FEN: "))
 board_input, elo_self, elo_oppo, legal_moves = preprocessing(
     board.fen(), 1100, 1100, elo_dict, all_moves_dict
 )
@@ -239,6 +240,9 @@ ort_inputs = {
 }
 ort_outs = ort_session.run(None, ort_inputs)
 logits_maia_legal = ort_outs[0] * legal_moves.numpy()
+np.save("input_board_python.npy", boards2)
+np.save("logits_python.npy", ort_outs[0])
+np.save("logits_python_legal.npy", logits_maia_legal)
 probs = torch.tensor(logits_maia_legal).softmax(dim=-1).cpu().tolist()
 preds = np.argmax(logits_maia_legal, axis=-1)
 

@@ -63,6 +63,16 @@ class Maia {
 
     const probs = processOutputs(logits_maia, legalMoves);
 
+    const logitsArray = Array.from(logits_maia.data as Float32Array);
+    const logitsMaiaLegal = logitsArray.map((logit, idx) =>
+      legalMoves[idx] > 0 ? logit : 0
+    );
+
+    const boardTensorArray = Array.from(boardTensor);
+    console.log(boardTensorArray);
+    console.log(logitsArray);
+    console.log(logitsMaiaLegal);
+
     // Process logits
 
     // const logitsMaiaArray = logits_maia.data as Float32Array;
