@@ -2,14 +2,15 @@ import numpy as np
 import json
 
 # Load the Python board tensor
-board_python = np.load("input_board_python.npy")
+board_python = np.load("board_maia.npy")
+board_typescript = np.load("board_onnx_py.npy")
 
 # Load the TypeScript board tensor
-with open("input_board_typescript.json", "r") as f:
-    board_typescript_list = json.load(f)
+# with open("input_board_typescript.json", "r") as f:
+#     board_typescript_list = json.load(f)
 
 # Convert the TypeScript list to a NumPy array
-board_typescript = np.array(board_typescript_list, dtype=np.float32)
+# board_typescript = np.array(board_typescript_list, dtype=np.float32)
 
 # Reshape the TypeScript tensor to match the shape of the Python tensor
 # Assuming the tensor shape is [1, 18, 8, 8]

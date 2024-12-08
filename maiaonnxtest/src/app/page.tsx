@@ -1,7 +1,6 @@
 "use client";
 
-import Maia from "../maia2/model";
-
+import Maia from "./maia2/model";
 import { useState } from "react";
 
 export default function Home() {
@@ -9,7 +8,7 @@ export default function Home() {
     modelPath: "/maia_rapid_onnx.onnx",
   });
   const [fen, setFen] = useState("");
-  const [output, setOutput] = useState(null);
+  const [output, setOutput] = useState<{ moveProbs: Record<string, number> }>();
 
   async function runModel() {
     try {
@@ -17,7 +16,6 @@ export default function Home() {
       const eloOppo = 1100;
 
       const result = await model.evaluate(fen, eloSelf, eloOppo);
-      console.log(result);
 
       setOutput(result);
     } catch (error) {
