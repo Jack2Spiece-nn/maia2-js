@@ -30,76 +30,68 @@ function softmax(values: Float32Array): Float32Array {
  * @param {Chess} board - The chess board state.
  * @returns {Float32Array} - The tensor representation of the board state.
  */
-function boardToTensor(board: Chess): Float32Array {
-  const pieceTypes = ["p", "n", "b", "r", "q", "k"];
-  const numPieceChannels = 12; // 6 piece types * 2 colors
-  const additionalChannels = 6; // Turn, castling rights, en passant
-  const tensor = new Float32Array(
-    (numPieceChannels + additionalChannels) * 8 * 8
-  );
+function boardToTensor(fen: string): Float32Array {
+  const tokens = fen.split(" ");
+  const piecePlacement = tokens[0];
+  const activeColor = tokens[1];
+  const castlingAvailability = tokens[2];
+  const enPassantTarget = tokens[3];
 
-  const pieceIndices: Record<string, number> = pieceTypes.reduce(
-    (acc: Record<string, number>, piece, idx) => {
-      acc[piece] = idx;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-
-  // Fill tensor for each piece type
-  for (const pieceType of pieceTypes) {
-    for (const color of [true, false]) {
-      const pieceColor = color ? "w" : "b";
-      const index = pieceIndices[pieceType] + (color ? 0 : 6);
-      board.board().forEach((row, rowIndex) => {
-        row.forEach((square, colIndex) => {
-          if (
-            square &&
-            square.type === pieceType &&
-            square.color === pieceColor
-          ) {
-            const flatIndex = (index * 8 + rowIndex) * 8 + colIndex;
-            tensor[flatIndex] = 1.0;
-          }
-        });
-      });
-    }
-  }
-
-  // Player's turn channel
-  const turnChannel = numPieceChannels * 8 * 8;
-  if (board.turn() === "w") {
-    for (let i = 0; i < 8 * 8; i++) {
-      tensor[turnChannel + i] = 1.0;
-    }
-  }
-
-  // Castling rights channels
-  const castlingRights = [
-    board.getCastlingRights("w").k,
-    board.getCastlingRights("w").q,
-    board.getCastlingRights("b").k,
-    board.getCastlingRights("b").q,
+  const pieceTypes = [
+    "P",
+    "N",
+    "B",
+    "R",
+    "Q",
+    "K",
+    "p",
+    "n",
+    "b",
+    "r",
+    "q",
+    "k",
   ];
-  for (let i = 0; i < 4; i++) {
-    if (castlingRights[i]) {
-      const offset = (numPieceChannels + 1 + i) * 8 * 8;
-      for (let j = 0; j < 8 * 8; j++) {
-        tensor[offset + j] = 1.0;
+  const tensor = new Float32Array((12 + 6) * 8 * 8);
+
+  const rows = piecePlacement.split("/");
+  for (let rank = 0; rank < 8; rank++) {
+    let file = 0;
+    for (const char of rows[rank]) {
+      if (isNaN(parseInt(char))) {
+        const index = pieceTypes.indexOf(char);
+        const tensorIndex = index * 64 + rank * 8 + file;
+        tensor[tensorIndex] = 1.0;
+        file += 1;
+      } else {
+        file += parseInt(char);
       }
     }
   }
 
-  // En passant target channel
-  const epChannel = numPieceChannels + 5;
-  const fenParts = board.fen().split(" ");
-  const enPassantSquare = fenParts[3]; // The en passant square is the 4th part of the FEN string
+  // Player's turn channel
+  const turnChannel = 12 * 64;
+  tensor.fill(activeColor === "w" ? 1.0 : 0.0, turnChannel, turnChannel + 64);
 
-  if (enPassantSquare !== "-") {
-    const col = enPassantSquare.charCodeAt(0) - "a".charCodeAt(0); // Column as 0-based index
-    const row = 8 - parseInt(enPassantSquare[1], 10); // Row as 0-based index
-    const flatIndex = (epChannel * 8 + row) * 8 + col;
-    tensor[flatIndex] = 1.0;
+  // Castling rights channels
+  const castlingRights = [
+    castlingAvailability.includes("K"),
+    castlingAvailability.includes("Q"),
+    castlingAvailability.includes("k"),
+    castlingAvailability.includes("q"),
+  ];
+  for (let i = 0; i < 4; i++) {
+    if (castlingRights[i]) {
+      tensor.fill(1.0, (13 + i) * 64, (13 + i) * 64 + 64);
+    }
+  }
+
+  // En passant target channel
+  const epChannel = 17 * 64;
+  if (enPassantTarget !== "-") {
+    const file = enPassantTarget.charCodeAt(0) - "a".charCodeAt(0);
+    const rank = 8 - parseInt(enPassantTarget[1]);
+    const index = epChannel + rank * 8 + file;
+    tensor[index] = 1.0;
   }
 
   return tensor;
@@ -124,7 +116,7 @@ function preprocess(
   }
 
   // Convert board to tensor
-  const boardInput = boardToTensor(board);
+  const boardInput = boardToTensor(board.fen());
 
   // Map Elo to categories
   const eloSelfCategory = mapToCategory(eloSelf, eloDict);

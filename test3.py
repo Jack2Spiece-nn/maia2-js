@@ -1,6 +1,7 @@
 import json
 from maia2 import model, dataset, inference
 
+
 maia2_model = model.from_pretrained(type="rapid", device="cpu")
 
 prepared = inference.prepare()
