@@ -43,7 +43,7 @@ class Maia {
         BigInt64Array.from([BigInt(eloOppoCategory)])
       ),
     };
-    let { logits_maia, logits_value } = await this.model.run(feeds);
+    const { logits_maia, logits_value } = await this.model.run(feeds);
 
     const { policy, value } = processOutputs(
       fen,
