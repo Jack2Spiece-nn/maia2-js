@@ -2,43 +2,55 @@
 
 import { Chess } from "chess.js";
 import Maia from "./maia2/model";
-import { useState, useEffect } from "react";
-import Chessground from "@react-chess/chessground";
+import { Dests, Key } from "chessground/types";
+import { DrawShape } from "chessground/draw";
 import "chessground/assets/chessground.base.css";
 import "chessground/assets/chessground.brown.css";
+import Chessground from "@react-chess/chessground";
 import "chessground/assets/chessground.cburnett.css";
-import { DrawShape } from "chessground/draw";
-import { Key } from "chessground/types";
+import { useState, useEffect, useCallback } from "react";
 
 export default function Home() {
   const [selfElo, setSelfElo] = useState(1100);
   const [oppoElo, setOppoElo] = useState(1100);
-  const [arrows, setArrows] = useState<DrawShape[]>([]);
-  const [fen, setFen] = useState(
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+  const [board, setBoard] = useState<Chess>(
+    new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
   );
+  const [arrows, setArrows] = useState<DrawShape[]>([]);
   const [model, setModel] = useState<Maia>();
   const [output, setOutput] = useState<{
-    fen: string;
     value: number;
     policy: Record<string, number>;
   }>();
+
+  const dests: Dests = new Map();
+
+  board.moves({ verbose: true }).forEach((move) => {
+    const from = move.from as Key;
+    const to = move.to as Key;
+    if (!dests.has(from)) {
+      dests.set(from, []);
+    }
+    dests.get(from)?.push(to);
+  });
 
   useEffect(() => {
     setModel(new Maia({ modelPath: "/maia_rapid_onnx.onnx" }));
   }, []);
 
-  async function runModel() {
+  const runModel = useCallback(async () => {
     try {
-      if (!model) return;
+      if (!model || !model.Ready || !model.model) return;
+      setOutput(undefined);
+      setArrows([]);
 
-      const result = await model.evaluate(fen, selfElo, oppoElo);
+      const result = await model.evaluate(board.fen(), selfElo, oppoElo);
 
       result.policy = Object.fromEntries(
-        Object.entries(result.policy).sort(([, a], [, b]) => b - a)
+        Object.entries(result.policy).sort(([, a], [, b]) => b - a),
       );
 
-      setOutput({ ...result, fen });
+      setOutput({ ...result });
       const top = Object.keys(result.policy)[0];
 
       setArrows([
@@ -51,98 +63,103 @@ export default function Home() {
     } catch (error) {
       console.error("Error running the model:", error);
     }
-  }
+  }, [board, model, oppoElo, selfElo, setOutput]);
+
+  useEffect(() => {
+    runModel();
+  }, [runModel, selfElo, oppoElo]);
 
   return (
-    <div className="flex w-screen flex-col gap-4 md:gap-8 py-6 md:py-0 justify-start items-center md:justify-center md:h-screen bg-[#1C1A1E]">
+    <div className="flex w-screen flex-col items-center justify-start gap-4 bg-[#1C1A1E] py-6 md:h-screen md:justify-center md:gap-8 md:py-0">
       <h1 className="text-4xl font-bold text-white">Maia2 ONNX Example</h1>
-      <div className="flex flex-col md:flex-row gap-2 items-start justify-center">
+      <div className="flex flex-col items-start justify-center gap-2 md:flex-row">
         <div className="flex flex-col gap-2">
-          <div className="md:h-[50vh] md:w-[50vh] w-[90vw] h-[90vw]">
+          <div className="h-[90vw] w-[90vw] md:h-[50vh] md:w-[50vh]">
             <Chessground
               contained
               config={{
-                fen: output?.fen,
+                fen: board.fen(),
+                movable: {
+                  free: false,
+                  dests: dests,
+                  events: {
+                    after: (orig: Key, dest: Key) => {
+                      const move = board.move({ from: orig, to: dest });
+                      if (move) {
+                        setBoard(board);
+
+                        runModel();
+                      }
+                    },
+                  },
+                },
                 drawable: {
                   autoShapes: arrows,
                 },
               }}
             />
           </div>
-          <div className="flex flex-col gap-2 w-full">
-            <div className="flex  gap-2 items-center w-full justify-between">
-              <div className="flex flex-col w-full flex-1">
+          <div className="flex w-[50vh] flex-col gap-2">
+            <div className="flex w-full items-center justify-between gap-2">
+              <div className="flex w-full flex-1 flex-col">
                 <label className="text-white">Self Elo</label>
                 <select
                   value={selfElo}
                   onChange={(e) => setSelfElo(parseInt(e.target.value))}
-                  className="h-10 bg-white/5 text-white/60 px-4 font-mono focus:outline-none rounded-sm"
+                  className="h-10 rounded-sm bg-white/5 px-4 font-mono text-white/60 focus:outline-none"
                 >
                   {[1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900].map(
                     (elo) => (
                       <option key={elo} value={elo}>
                         {elo}
                       </option>
-                    )
+                    ),
                   )}
                 </select>
               </div>
-              <div className="flex flex-col w-full flex-1">
+              <div className="flex w-full flex-1 flex-col">
                 <label className="text-white">Opponent Elo</label>
                 <select
                   value={oppoElo}
                   onChange={(e) => setOppoElo(parseInt(e.target.value))}
-                  className="h-10 bg-white/5 text-white/60 px-4 font-mono focus:outline-none rounded-sm"
+                  className="h-10 rounded-sm bg-white/5 px-4 font-mono text-white/60 focus:outline-none"
                 >
                   {[1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900].map(
                     (elo) => (
                       <option key={elo} value={elo}>
                         {elo}
                       </option>
-                    )
+                    ),
                   )}
                 </select>
               </div>
             </div>
-            <div className="flex items-center justify-center rounded-sm overflow-hidden">
-              <input
-                type="text"
-                value={fen}
-                placeholder="Enter FEN"
-                className="flex-1 flex-row w-full h-10 bg-white/5 text-white/60 px-4 font-mono focus:outline-none"
-                onChange={(e) => setFen(e.target.value)}
-              />
-              <button
-                onClick={runModel}
-                disabled={!model}
-                className="p-2 bg-red-400 focus:outline-none hover:bg-red-500 cursor-pointer text-white px-4"
-              >
-                Analyze
-              </button>
+            <div className="h-10 w-full flex-1 flex-row items-center justify-center rounded-sm bg-white/5 px-4 py-2 font-mono text-white/60 focus:outline-none">
+              <p className="whitespace-nowrap text-xs">{board.fen()}</p>
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-start w-full md:w-[50vh] bg-[#26252D] border border-white/5 rounded overflow-hidden">
+        <div className="flex w-full flex-col items-start overflow-hidden rounded border border-white/5 bg-[#26252D] md:w-[50vh]">
           {output ? (
-            <div className="flex flex-col w-full text-white">
-              <div className="justify-between flex w-full p-4 bg-red-400/80">
+            <div className="flex w-full flex-col text-white">
+              <div className="flex w-full justify-between bg-red-400/80 p-4">
                 <p className="font-bold text-white">Maia Win %</p>
                 <p className="text-mono text-white">
                   {(output.value * 100).toFixed(1)}%
                 </p>
               </div>
-              <div className="flex flex-col w-full md:max-h-[50vh] overflow-y-scroll">
+              <div className="flex w-full flex-col overflow-y-scroll md:max-h-[50vh]">
                 {Object.entries(output.policy).map(([move, prob], index) => (
                   <div
                     key={index}
-                    className={`flex items-center justify-between w-full px-4 py-1 ${
+                    className={`flex w-full items-center justify-between px-4 py-1 ${
                       index % 2 === 0
                         ? "bg-[#9F4F44] bg-opacity-[0.02]"
                         : "bg-[#9F4F44] bg-opacity-10"
                     }`}
                   >
                     <p className="w-64 text-lg">
-                      {new Chess(output.fen).move(move)?.san}
+                      {new Chess(board.fen()).move(move)?.san}
                     </p>
                     <p className="font">{(prob * 100).toFixed(1)}%</p>
                   </div>
@@ -150,7 +167,7 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            <div className="p-4 flex flex-col rounded-sm">
+            <div className="flex flex-col rounded-sm p-4 text-white">
               Waiting for analysis...
             </div>
           )}

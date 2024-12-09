@@ -4,7 +4,7 @@ import { mirrorMove, preprocess, allPossibleMovesReversed } from "./utils";
 
 class Maia {
   public Ready: Promise<boolean>;
-  private model!: ort.InferenceSession;
+  public model!: ort.InferenceSession;
   private options: { modelPath: string };
 
   constructor(options: { modelPath: string }) {
