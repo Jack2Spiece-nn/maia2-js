@@ -12,12 +12,21 @@ class Maia {
     this.Ready = new Promise(async (resolve, reject) => {
       try {
         this.model = await ort.InferenceSession.create(options.modelPath);
+        resolve(true);
       } catch (e) {
         reject(e);
       }
     });
   }
 
+  /**
+   * Evaluates a given chess position using the Maia model.
+   *
+   * @param fen - The FEN string representing the chess position.
+   * @param eloSelf - The ELO rating of the player making the move.
+   * @param eloOppo - The ELO rating of the opponent.
+   * @returns A promise that resolves to an object containing the policy and value predictions.
+   */
   async evaluate(fen: string, eloSelf: number, eloOppo: number) {
     const { boardInput, legalMoves, eloSelfCategory, eloOppoCategory } =
       preprocess(fen, eloSelf, eloOppo);
@@ -34,27 +43,49 @@ class Maia {
         BigInt64Array.from([BigInt(eloOppoCategory)])
       ),
     };
-    const { logits_maia } = await this.model.run(feeds);
+    let { logits_maia, logits_value } = await this.model.run(feeds);
 
-    const probs = processOutputs(fen, logits_maia, legalMoves);
+    const { policy, value } = processOutputs(
+      fen,
+      logits_maia,
+      logits_value,
+      legalMoves
+    );
 
     return {
-      moveProbs: probs,
+      policy,
+      value,
     };
   }
 }
 
+/**
+ * Processes the outputs of the ONNX model to compute the policy and value.
+ *
+ * @param {string} fen - The FEN string representing the current board state.
+ * @param {ort.Tensor} logits_maia - The logits tensor for the policy output from the model.
+ * @param {ort.Tensor} logits_value - The logits tensor for the value output from the model.
+ * @param {Float32Array} legalMoves - An array indicating the legal moves.
+ * @returns {{ policy: Record<string, number>, value: number }} An object containing the policy (move probabilities) and the value (win probability).
+ */
 function processOutputs(
   fen: string,
-  output: ort.Tensor,
+  logits_maia: ort.Tensor,
+  logits_value: ort.Tensor,
   legalMoves: Float32Array
 ) {
-  const logits = output.data as Float32Array;
+  const logits = logits_maia.data as Float32Array;
+  const value = logits_value.data as Float32Array;
+
+  let winProb = Math.min(Math.max((value[0] as number) / 2 + 0.5, 0), 1);
 
   let black_flag = false;
   if (fen.split(" ")[1] === "b") {
     black_flag = true;
+    winProb = 1 - winProb;
   }
+
+  winProb = Math.round(winProb * 10000) / 10000;
 
   // Get indices of legal moves
   const legalMoveIndices = legalMoves
@@ -85,11 +116,8 @@ function processOutputs(
   for (let i = 0; i < legalMoveIndices.length; i++) {
     moveProbs[legalMovesMirrored[i]] = probs[i];
   }
-  // for (let i = 0; i < legalMoveIndices.length; i++) {
-  //   moveProbs[allPossibleMovesReversed[legalMoveIndices[i]]] = probs[i];
-  // }
 
-  return moveProbs;
+  return { policy: moveProbs, value: winProb };
 }
 
 export default Maia;

@@ -1,34 +1,21 @@
 import { Chess } from "chess.js";
 
-import allPossibleMovesDict from "./all_moves.json";
-import allPossibleMovesReversedDict from "./all_moves_reversed.json";
+import allPossibleMovesDict from "./data/all_moves.json";
+import allPossibleMovesReversedDict from "./data/all_moves_reversed.json";
 
 const allPossibleMoves = allPossibleMovesDict as Record<string, number>;
 const allPossibleMovesReversed = allPossibleMovesReversedDict as Record<
   number,
   string
 >;
-
 const eloDict = createEloDict();
 
-function softmax(values: Float32Array): Float32Array {
-  const maxVal = Math.max(...values);
-  const expVals = values.map((val) => Math.exp(val - maxVal));
-  const sumExpVals = expVals.reduce((sum, val) => sum + val, 0);
-  return expVals.map((val) => val / sumExpVals);
-}
-
 /**
- * Converts a chess board state into a tensor representation.
+ * Converts a chess board position in FEN notation to a tensor representation.
+ * The tensor includes information about piece placement, active color, castling rights, and en passant target.
  *
- * The tensor has the following structure:
- * - 12 channels for piece types (6 types for each color)
- * - 1 channel for the player's turn
- * - 4 channels for castling rights
- * - 1 channel for en passant target square
- *
- * @param {Chess} board - The chess board state.
- * @returns {Float32Array} - The tensor representation of the board state.
+ * @param fen - The FEN string representing the chess board position.
+ * @returns A Float32Array representing the tensor of the board position.
  */
 function boardToTensor(fen: string): Float32Array {
   const tokens = fen.split(" ");
@@ -57,7 +44,7 @@ function boardToTensor(fen: string): Float32Array {
 
   // Adjust rank indexing
   for (let rank = 0; rank < 8; rank++) {
-    const row = 7 - rank; // Invert rank to match Python's row indexing
+    const row = 7 - rank;
     let file = 0;
     for (const char of rows[rank]) {
       if (isNaN(parseInt(char))) {
@@ -105,6 +92,15 @@ function boardToTensor(fen: string): Float32Array {
   return tensor;
 }
 
+/**
+ * Preprocesses the input data for the model.
+ * Converts the FEN string, Elo ratings, and legal moves into tensors.
+ *
+ * @param fen - The FEN string representing the board position.
+ * @param eloSelf - The Elo rating of the player.
+ * @param eloOppo - The Elo rating of the opponent.
+ * @returns An object containing the preprocessed data.
+ */
 function preprocess(
   fen: string,
   eloSelf: number,
@@ -119,7 +115,6 @@ function preprocess(
   let board = new Chess(fen);
   if (fen.split(" ")[1] === "b") {
     board = new Chess(mirrorFEN(board.fen()));
-    console.log(board.fen());
   } else if (fen.split(" ")[1] !== "w") {
     throw new Error(`Invalid FEN: ${fen}`);
   }
@@ -149,7 +144,14 @@ function preprocess(
   };
 }
 
-// Mapping Elo to category
+/**
+ * Maps an Elo rating to a predefined category based on specified intervals.
+ *
+ * @param elo - The Elo rating to be categorized.
+ * @param eloDict - A dictionary mapping Elo ranges to category indices.
+ * @returns The category index corresponding to the given Elo rating.
+ * @throws Will throw an error if the Elo value is out of the predefined range.
+ */
 function mapToCategory(elo: number, eloDict: Record<string, number>): number {
   const interval = 100;
   const start = 1100;
@@ -170,17 +172,11 @@ function mapToCategory(elo: number, eloDict: Record<string, number>): number {
   throw new Error("Elo value is out of range.");
 }
 
-// Create a reversed dictionary of indices to moves
-function createAllMovesDictReversed(
-  allMovesDict: Record<string, number>
-): Record<number, string> {
-  const reversed: Record<number, string> = {};
-  for (const [move, index] of Object.entries(allMovesDict)) {
-    reversed[index] = move;
-  }
-  return reversed;
-}
-
+/**
+ * Creates a dictionary mapping Elo rating ranges to category indices.
+ *
+ * @returns A dictionary mapping Elo ranges to category indices.
+ */
 function createEloDict(): { [key: string]: number } {
   const interval = 100;
   const start = 1100;
@@ -200,6 +196,13 @@ function createEloDict(): { [key: string]: number } {
   return eloDict;
 }
 
+/**
+ * Mirrors a chess move in UCI notation.
+ * The move is mirrored vertically (top-to-bottom flip) on the board.
+ *
+ * @param moveUci - The move to be mirrored in UCI notation.
+ * @returns The mirrored move in UCI notation.
+ */
 function mirrorMove(moveUci: string): string {
   const isPromotion: boolean = moveUci.length > 4;
 
@@ -213,6 +216,13 @@ function mirrorMove(moveUci: string): string {
   return mirroredStart + mirroredEnd + promotionPiece;
 }
 
+/**
+ * Mirrors a square on the chess board vertically (top-to-bottom flip).
+ * The file remains the same, while the rank is inverted.
+ *
+ * @param square - The square to be mirrored in algebraic notation.
+ * @returns The mirrored square in algebraic notation.
+ */
 function mirrorSquare(square: string): string {
   const file: string = square.charAt(0);
   const rank: string = (9 - parseInt(square.charAt(1))).toString();
@@ -221,8 +231,10 @@ function mirrorSquare(square: string): string {
 }
 
 /**
- * Mirrors a chess board vertically and swaps piece colors based on a FEN string.
- * @param fen The original FEN string.
+ * Mirrors a FEN string vertically (top-to-bottom flip).
+ * The active color, castling rights, and en passant target are adjusted accordingly.
+ *
+ * @param fen - The FEN string to be mirrored.
  * @returns The mirrored FEN string.
  */
 function mirrorFEN(fen: string): string {
@@ -256,10 +268,9 @@ function mirrorFEN(fen: string): string {
 }
 
 /**
- * Swaps the colors of the pieces in a rank.
- * Uppercase letters represent White pieces, lowercase represent Black.
- * @param rank The rank string from FEN.
- * @returns The rank string with swapped piece colors.
+ * Swaps the colors of pieces in a rank by changing uppercase to lowercase and vice versa.
+ * @param rank The rank to be mirrored.
+ * @returns The mirrored rank.
  */
 function swapColorsInRank(rank: string): string {
   let swappedRank = "";
@@ -277,9 +288,9 @@ function swapColorsInRank(rank: string): string {
 }
 
 /**
- * Swaps the castling rights by changing uppercase to lowercase and vice versa.
- * @param castling The castling rights string from FEN.
- * @returns The swapped castling rights string.
+ * Swaps the colors of pieces in a rank by changing uppercase to lowercase and vice versa.
+ * @param rank The rank to be mirrored.
+ * @returns The mirrored rank.
  */
 function swapCastlingRights(castling: string): string {
   if (castling === "-") return castling;
@@ -299,10 +310,9 @@ function swapCastlingRights(castling: string): string {
 }
 
 /**
- * Mirrors the en passant square vertically (top-to-bottom flip).
- * Only the rank is affected; the file remains the same.
- * @param square The en passant square in algebraic notation.
- * @returns The mirrored en passant square.
+ * Mirrors the en passant target square by flipping the rank.
+ * @param square The en passant target square to be mirrored.
+ * @returns The mirrored en passant target square.
  */
 function mirrorEnPassant(square: string): string {
   const file = square[0];
@@ -314,15 +324,4 @@ function mirrorEnPassant(square: string): string {
   return `${file}${mirroredRank}`;
 }
 
-export {
-  preprocess,
-  boardToTensor,
-  mirrorMove,
-  createAllMovesDictReversed,
-  eloDict,
-  mirrorFEN,
-  allPossibleMoves,
-  allPossibleMovesReversed,
-  mapToCategory,
-  softmax,
-};
+export { preprocess, mirrorMove, allPossibleMovesReversed };
