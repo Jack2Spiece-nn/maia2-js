@@ -1,5 +1,4 @@
 venv/
 venv/*
 .DS_Store
-*.onnx
 *.pt
