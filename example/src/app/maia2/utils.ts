@@ -111,14 +111,15 @@ function preprocess(
   eloOppo: number
 ): {
   boardInput: Float32Array;
-  eloSelf: number;
-  eloOppo: number;
+  eloSelfCategory: number;
+  eloOppoCategory: number;
   legalMoves: Float32Array;
 } {
   // Handle mirroring if it's black's turn
   let board = new Chess(fen);
   if (fen.split(" ")[1] === "b") {
-    board = new Chess(mirrorBoard(board.fen()));
+    board = new Chess(mirrorFEN(board.fen()));
+    console.log(board.fen());
   } else if (fen.split(" ")[1] !== "w") {
     throw new Error(`Invalid FEN: ${fen}`);
   }
@@ -142,17 +143,10 @@ function preprocess(
 
   return {
     boardInput,
-    eloSelf: eloSelfCategory,
-    eloOppo: eloOppoCategory,
+    eloSelfCategory,
+    eloOppoCategory,
     legalMoves,
   };
-}
-
-function mirrorSquare(square: string): string {
-  const file = square.charAt(0);
-  const rank = square.charAt(1);
-  const mirroredRank = (9 - parseInt(rank)).toString(); // Mirror rank (1 -> 8, 2 -> 7, etc.)
-  return file + mirroredRank;
 }
 
 // Mapping Elo to category
@@ -206,75 +200,127 @@ function createEloDict(): { [key: string]: number } {
   return eloDict;
 }
 
-// Mirror moves for black pieces
-function mirrorMove(move: string): string {
-  const files = "abcdefgh";
-  const ranks = "12345678";
-  const [fromFile, fromRank, toFile, toRank] = move;
-  const mirroredFrom =
-    files[7 - files.indexOf(fromFile)] + ranks[8 - parseInt(fromRank)];
-  const mirroredTo =
-    files[7 - files.indexOf(toFile)] + ranks[8 - parseInt(toRank)];
-  return mirroredFrom + mirroredTo;
+function mirrorMove(moveUci: string): string {
+  const isPromotion: boolean = moveUci.length > 4;
+
+  const startSquare: string = moveUci.substring(0, 2);
+  const endSquare: string = moveUci.substring(2, 4);
+  const promotionPiece: string = isPromotion ? moveUci.substring(4) : "";
+
+  const mirroredStart: string = mirrorSquare(startSquare);
+  const mirroredEnd: string = mirrorSquare(endSquare);
+
+  return mirroredStart + mirroredEnd + promotionPiece;
+}
+
+function mirrorSquare(square: string): string {
+  const file: string = square.charAt(0);
+  const rank: string = (9 - parseInt(square.charAt(1))).toString();
+
+  return file + rank;
 }
 
 /**
- * Mirrors a given FEN string to represent the board from the opposite perspective.
- *
- * This function flips the board, swaps the piece colors, and adjusts the turn, castling rights,
- * and en passant target square accordingly.
- *
- * @param {string} fen - The FEN string representing the current board state.
- * @returns {string} - The mirrored FEN string representing the board from the opposite perspective.
+ * Mirrors a chess board vertically and swaps piece colors based on a FEN string.
+ * @param fen The original FEN string.
+ * @returns The mirrored FEN string.
  */
-function mirrorBoard(fen: string): string {
-  const parts = fen.split(" ");
-  const board = parts[0];
-  const turn = parts[1] === "w" ? "b" : "w"; // Swap turn
-  const castlingRights = parts[2];
-  const enPassant = parts[3];
+function mirrorFEN(fen: string): string {
+  const [position, activeColor, castling, enPassant, halfmove, fullmove] =
+    fen.split(" ");
 
-  // Mirror the board: Flip rows and swap piece colors
-  const mirroredRows = board
-    .split("/")
+  // Split the position into ranks
+  const ranks = position.split("/");
+
+  // Mirror the ranks (top-to-bottom flip)
+  const mirroredRanks = ranks
+    .slice()
     .reverse()
-    .map((row) => {
-      return row
-        .split("")
-        .map((char) => {
-          if (char >= "a" && char <= "z") {
-            return char.toUpperCase(); // Swap black to white
-          } else if (char >= "A" && char <= "Z") {
-            return char.toLowerCase(); // Swap white to black
-          } else {
-            return char; // Keep numbers as-is
-          }
-        })
-        .join("");
-    });
-  const mirroredBoard = mirroredRows.join("/");
+    .map((rank) => swapColorsInRank(rank));
 
-  // Mirror castling rights
-  const mirroredCastlingRights = castlingRights
-    .replace("K", "k")
-    .replace("Q", "q")
-    .replace("k", "K")
-    .replace("q", "Q");
+  // Reconstruct the mirrored position
+  const mirroredPosition = mirroredRanks.join("/");
 
-  // Mirror en passant square
-  const mirroredEnPassant = enPassant === "-" ? "-" : mirrorSquare(enPassant);
+  // Swap active color
+  const mirroredActiveColor = activeColor === "w" ? "b" : "w";
+
+  // Adjust castling rights: Swap uppercase (white) with lowercase (black) and vice versa
+  const mirroredCastling = swapCastlingRights(castling);
+
+  // En passant square: Mirror the rank only (since flipping top-to-bottom)
+  const mirroredEnPassant =
+    enPassant !== "-" ? mirrorEnPassant(enPassant) : "-";
 
   // Return the new FEN
-  return `${mirroredBoard} ${turn} ${mirroredCastlingRights} ${mirroredEnPassant} ${parts[4]} ${parts[5]}`;
+  return `${mirroredPosition} ${mirroredActiveColor} ${mirroredCastling} ${mirroredEnPassant} ${halfmove} ${fullmove}`;
+}
+
+/**
+ * Swaps the colors of the pieces in a rank.
+ * Uppercase letters represent White pieces, lowercase represent Black.
+ * @param rank The rank string from FEN.
+ * @returns The rank string with swapped piece colors.
+ */
+function swapColorsInRank(rank: string): string {
+  let swappedRank = "";
+  for (const char of rank) {
+    if (/[A-Z]/.test(char)) {
+      swappedRank += char.toLowerCase();
+    } else if (/[a-z]/.test(char)) {
+      swappedRank += char.toUpperCase();
+    } else {
+      // Numbers representing empty squares
+      swappedRank += char;
+    }
+  }
+  return swappedRank;
+}
+
+/**
+ * Swaps the castling rights by changing uppercase to lowercase and vice versa.
+ * @param castling The castling rights string from FEN.
+ * @returns The swapped castling rights string.
+ */
+function swapCastlingRights(castling: string): string {
+  if (castling === "-") return castling;
+
+  let swapped = "";
+  for (const char of castling) {
+    if (/[A-Z]/.test(char)) {
+      swapped += char.toLowerCase();
+    } else if (/[a-z]/.test(char)) {
+      swapped += char.toUpperCase();
+    } else {
+      swapped += char;
+    }
+  }
+
+  return swapped;
+}
+
+/**
+ * Mirrors the en passant square vertically (top-to-bottom flip).
+ * Only the rank is affected; the file remains the same.
+ * @param square The en passant square in algebraic notation.
+ * @returns The mirrored en passant square.
+ */
+function mirrorEnPassant(square: string): string {
+  const file = square[0];
+  const rank = square[1];
+
+  // Flip the rank: '1' ↔ '8', '2' ↔ '7', etc.
+  const mirroredRank = (9 - parseInt(rank, 10)).toString();
+
+  return `${file}${mirroredRank}`;
 }
 
 export {
   preprocess,
   boardToTensor,
+  mirrorMove,
   createAllMovesDictReversed,
   eloDict,
-  mirrorMove,
-  mirrorBoard,
+  mirrorFEN,
   allPossibleMoves,
   allPossibleMovesReversed,
   mapToCategory,
