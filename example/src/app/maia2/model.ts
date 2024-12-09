@@ -36,11 +36,11 @@ class Maia {
       boards: new ort.Tensor("float32", boardInput, [1, 18, 8, 8]),
       elo_self: new ort.Tensor(
         "int64",
-        BigInt64Array.from([BigInt(eloSelfCategory)])
+        BigInt64Array.from([BigInt(eloSelfCategory)]),
       ),
       elo_oppo: new ort.Tensor(
         "int64",
-        BigInt64Array.from([BigInt(eloOppoCategory)])
+        BigInt64Array.from([BigInt(eloOppoCategory)]),
       ),
     };
     const { logits_maia, logits_value } = await this.model.run(feeds);
@@ -49,7 +49,7 @@ class Maia {
       fen,
       logits_maia,
       logits_value,
-      legalMoves
+      legalMoves,
     );
 
     return {
@@ -72,7 +72,7 @@ function processOutputs(
   fen: string,
   logits_maia: ort.Tensor,
   logits_value: ort.Tensor,
-  legalMoves: Float32Array
+  legalMoves: Float32Array,
 ) {
   const logits = logits_maia.data as Float32Array;
   const value = logits_value.data as Float32Array;

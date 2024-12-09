@@ -2,8 +2,8 @@
 
 import { Chess } from "chess.js";
 import Maia from "./maia2/model";
-import { Dests, Key } from "chessground/types";
 import { DrawShape } from "chessground/draw";
+import { Dests, Key } from "chessground/types";
 import "chessground/assets/chessground.base.css";
 import "chessground/assets/chessground.brown.css";
 import Chessground from "@react-chess/chessground";
@@ -11,6 +11,7 @@ import "chessground/assets/chessground.cburnett.css";
 import { useState, useEffect, useCallback } from "react";
 
 export default function Home() {
+  const [loaded, setLoaded] = useState(false);
   const [selfElo, setSelfElo] = useState(1100);
   const [oppoElo, setOppoElo] = useState(1100);
   const [board, setBoard] = useState<Chess>(
@@ -35,12 +36,18 @@ export default function Home() {
   });
 
   useEffect(() => {
-    setModel(new Maia({ modelPath: "/maia_rapid_onnx.onnx" }));
+    const maia = new Maia({ modelPath: "/maia_rapid_onnx.onnx" });
+    setModel(maia);
+    maia.Ready.then((ready) => {
+      if (ready) {
+        setLoaded(true);
+      }
+    });
   }, []);
 
   const runModel = useCallback(async () => {
     try {
-      if (!model || !model.Ready || !model.model) return;
+      if (!loaded || !model) return;
       setOutput(undefined);
       setArrows([]);
 
@@ -63,7 +70,7 @@ export default function Home() {
     } catch (error) {
       console.error("Error running the model:", error);
     }
-  }, [board, model, oppoElo, selfElo, setOutput]);
+  }, [board, model, oppoElo, selfElo, setOutput, loaded]);
 
   useEffect(() => {
     runModel();
@@ -71,7 +78,14 @@ export default function Home() {
 
   return (
     <div className="flex w-screen flex-col items-center justify-start gap-4 bg-[#1C1A1E] py-6 md:h-screen md:justify-center md:gap-8 md:py-0">
-      <h1 className="text-4xl font-bold text-white">Maia2 ONNX Example</h1>
+      <div className="flex items-center gap-6">
+        <h1 className="text-4xl font-bold text-white">Maia2 ONNX Example</h1>
+        <div
+          className={`rounded-md px-3 py-1 text-sm text-white ${loaded ? "bg-green-500" : "bg-red-500"}`}
+        >
+          <p>{loaded ? "READY" : "LOADING"}</p>
+        </div>
+      </div>
       <div className="flex flex-col items-start justify-center gap-2 md:flex-row">
         <div className="flex flex-col gap-2">
           <div className="h-[90vw] w-[90vw] md:h-[50vh] md:w-[50vh]">
@@ -81,7 +95,7 @@ export default function Home() {
                 fen: board.fen(),
                 movable: {
                   free: false,
-                  dests: dests,
+                  dests: loaded ? dests : new Map(),
                   events: {
                     after: (orig: Key, dest: Key) => {
                       const move = board.move({ from: orig, to: dest });
