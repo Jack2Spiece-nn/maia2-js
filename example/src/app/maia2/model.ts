@@ -11,12 +11,29 @@ class Maia {
     this.options = options;
     this.Ready = new Promise(async (resolve, reject) => {
       try {
-        this.model = await ort.InferenceSession.create(options.modelPath);
+        const buffer = await this.getCachedModel(options.modelPath);
+        this.model = await ort.InferenceSession.create(buffer);
         resolve(true);
       } catch (e) {
         reject(e);
       }
     });
+  }
+
+  private async getCachedModel(url: string): Promise<ArrayBuffer> {
+    const cache = await caches.open("maia2-model");
+    const response = await cache.match(url);
+    if (response) {
+      return response.arrayBuffer();
+    } else {
+      const response = await fetch(url);
+      if (response.ok) {
+        await cache.put(url, response.clone());
+        return response.arrayBuffer();
+      } else {
+        throw new Error("Failed to fetch model");
+      }
+    }
   }
 
   /**
