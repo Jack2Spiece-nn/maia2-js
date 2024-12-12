@@ -104,7 +104,7 @@ function boardToTensor(fen: string): Float32Array {
 function preprocess(
   fen: string,
   eloSelf: number,
-  eloOppo: number
+  eloOppo: number,
 ): {
   boardInput: Float32Array;
   eloSelfCategory: number;

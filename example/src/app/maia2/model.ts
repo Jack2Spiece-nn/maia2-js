@@ -39,14 +39,14 @@ class Maia {
   /**
    * Evaluates a given chess position using the Maia model.
    *
-   * @param fen - The FEN string representing the chess position.
+   * @param board - The FEN string representing the chess position.
    * @param eloSelf - The ELO rating of the player making the move.
    * @param eloOppo - The ELO rating of the opponent.
    * @returns A promise that resolves to an object containing the policy and value predictions.
    */
-  async evaluate(fen: string, eloSelf: number, eloOppo: number) {
+  async evaluate(board: string, eloSelf: number, eloOppo: number) {
     const { boardInput, legalMoves, eloSelfCategory, eloOppoCategory } =
-      preprocess(fen, eloSelf, eloOppo);
+      preprocess(board, eloSelf, eloOppo);
 
     // Load and run the model
     const feeds: Record<string, ort.Tensor> = {
@@ -63,7 +63,7 @@ class Maia {
     const { logits_maia, logits_value } = await this.model.run(feeds);
 
     const { policy, value } = processOutputs(
-      fen,
+      board,
       logits_maia,
       logits_value,
       legalMoves,
@@ -72,6 +72,100 @@ class Maia {
     return {
       policy,
       value,
+    };
+  }
+
+  /**
+   * Evaluates a batch of chess positions using the Maia model.
+   *
+   * @param boards - An array of FEN strings representing the chess positions.
+   * @param eloSelfs - An array of ELO ratings for the player making the move.
+   * @param eloOppos - An array of ELO ratings for the opponent.
+   * @returns A promise that resolves to an array of objects containing the policy and value predictions.
+   */
+  async batchEvaluate(
+    boards: string[],
+    eloSelfs: number[],
+    eloOppos: number[],
+  ) {
+    const batchSize = boards.length;
+    const boardInputs = [];
+    const eloSelfCategories = [];
+    const eloOppoCategories = [];
+    const legalMoves = [];
+
+    for (let i = 0; i < boards.length; i++) {
+      const {
+        boardInput,
+        legalMoves: legalMoves_,
+        eloSelfCategory,
+        eloOppoCategory,
+      } = preprocess(boards[i], eloSelfs[i], eloOppos[i]);
+
+      boardInputs.push(boardInput);
+      eloSelfCategories.push(eloSelfCategory);
+      eloOppoCategories.push(eloOppoCategory);
+      legalMoves.push(legalMoves_);
+    }
+
+    const combinedBoardInputs = new Float32Array(batchSize * 18 * 8 * 8);
+    for (let i = 0; i < batchSize; i++) {
+      combinedBoardInputs.set(boardInputs[i], i * 18 * 8 * 8);
+    }
+
+    const feeds: Record<string, ort.Tensor> = {
+      boards: new ort.Tensor("float32", combinedBoardInputs, [
+        batchSize,
+        18,
+        8,
+        8,
+      ]),
+      elo_self: new ort.Tensor(
+        "int64",
+        BigInt64Array.from(eloSelfCategories.map(BigInt)),
+        [batchSize],
+      ),
+      elo_oppo: new ort.Tensor(
+        "int64",
+        BigInt64Array.from(eloOppoCategories.map(BigInt)),
+        [batchSize],
+      ),
+    };
+
+    const start = performance.now();
+    const { logits_maia, logits_value } = await this.model.run(feeds);
+    const end = performance.now();
+
+    const results = [];
+
+    for (let i = 0; i < batchSize; i++) {
+      const logitsPerItem = logits_maia.size / batchSize;
+      const startIdx = i * logitsPerItem;
+      const endIdx = startIdx + logitsPerItem;
+
+      const policyLogitsArray = logits_maia.data.slice(
+        startIdx,
+        endIdx,
+      ) as Float32Array;
+      const policyTensor = new ort.Tensor("float32", policyLogitsArray, [
+        logitsPerItem,
+      ]);
+      const valueLogit = logits_value.data[i] as number;
+      const valueTensor = new ort.Tensor("float32", [valueLogit], [1]);
+
+      const { policy, value: winProb } = processOutputs(
+        boards[i],
+        policyTensor,
+        valueTensor,
+        legalMoves[i],
+      );
+
+      results.push({ policy, value: winProb });
+    }
+
+    return {
+      result: results,
+      time: end - start,
     };
   }
 }

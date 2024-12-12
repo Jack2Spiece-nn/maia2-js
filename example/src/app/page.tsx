@@ -9,6 +9,7 @@ import "chessground/assets/chessground.brown.css";
 import Chessground from "@react-chess/chessground";
 import "chessground/assets/chessground.cburnett.css";
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 
 export default function Home() {
   const [loaded, setLoaded] = useState(false);
@@ -78,16 +79,23 @@ export default function Home() {
 
   return (
     <div className="flex w-screen flex-col items-center justify-start gap-4 bg-[#1C1A1E] py-6 md:h-screen md:justify-center md:gap-8 md:py-0">
-      <div className="flex items-center gap-6">
-        <h1 className="text-4xl font-bold text-white">Maia2 ONNX Example</h1>
-        <div
-          className={`rounded-md px-3 py-1 text-sm text-white ${loaded ? "bg-green-500" : "bg-red-500"}`}
-        >
-          <p>{loaded ? "READY" : "LOADING"}</p>
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center justify-center gap-3 md:flex-row md:gap-6">
+          <h1 className="order-2 text-center text-3xl font-bold text-white md:order-1 md:text-4xl">
+            Maia2 ONNX Batch Example
+          </h1>
+          <div
+            className={`order-1 rounded-md px-3 py-1 text-sm text-white md:order-2 ${loaded ? "bg-green-500" : "bg-red-500"}`}
+          >
+            <p>{loaded ? "READY" : "LOADING"}</p>
+          </div>
         </div>
+        <Link href="/batch">
+          <p className="text-lg text-white underline">See Batch Performance</p>
+        </Link>
       </div>
-      <div className="flex flex-col items-start justify-center gap-2 md:flex-row">
-        <div className="flex flex-col gap-2">
+      <div className="flex w-full flex-col items-center justify-center gap-2 md:w-auto md:flex-row md:items-start">
+        <div className="flex w-full flex-col items-center gap-2 md:w-auto">
           <div className="h-[90vw] w-[90vw] md:h-[50vh] md:w-[50vh]">
             <Chessground
               contained
@@ -113,7 +121,7 @@ export default function Home() {
               }}
             />
           </div>
-          <div className="flex w-[50vh] flex-col gap-2">
+          <div className="flex w-[90vw] flex-col gap-2 md:w-[50vh]">
             <div className="flex w-full items-center justify-between gap-2">
               <div className="flex w-full flex-1 flex-col">
                 <label className="text-white">Self Elo</label>
@@ -149,11 +157,13 @@ export default function Home() {
               </div>
             </div>
             <div className="h-10 w-full flex-1 flex-row items-center justify-center rounded-sm bg-white/5 px-4 py-2 font-mono text-white/60 focus:outline-none">
-              <p className="whitespace-nowrap text-xs">{board.fen()}</p>
+              <p className="whitespace-nowrap text-[0.5rem] md:text-xs">
+                {board.fen()}
+              </p>
             </div>
           </div>
         </div>
-        <div className="flex w-full flex-col items-start overflow-hidden rounded border border-white/5 bg-[#26252D] md:w-[50vh]">
+        <div className="flex w-[90vw] flex-col items-start overflow-hidden rounded border border-white/5 bg-[#26252D] md:w-[50vh]">
           {output ? (
             <div className="flex w-full flex-col text-white">
               <div className="flex w-full justify-between bg-red-400/80 p-4">
