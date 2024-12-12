@@ -5,10 +5,8 @@ import { mirrorMove, preprocess, allPossibleMovesReversed } from "./utils";
 class Maia {
   public Ready: Promise<boolean>;
   public model!: ort.InferenceSession;
-  private options: { modelPath: string };
 
   constructor(options: { modelPath: string }) {
-    this.options = options;
     this.Ready = new Promise(async (resolve, reject) => {
       try {
         const buffer = await this.getCachedModel(options.modelPath);
@@ -53,11 +51,11 @@ class Maia {
       boards: new ort.Tensor("float32", boardInput, [1, 18, 8, 8]),
       elo_self: new ort.Tensor(
         "int64",
-        BigInt64Array.from([BigInt(eloSelfCategory)]),
+        BigInt64Array.from([BigInt(eloSelfCategory)])
       ),
       elo_oppo: new ort.Tensor(
         "int64",
-        BigInt64Array.from([BigInt(eloOppoCategory)]),
+        BigInt64Array.from([BigInt(eloOppoCategory)])
       ),
     };
     const { logits_maia, logits_value } = await this.model.run(feeds);
@@ -66,7 +64,7 @@ class Maia {
       board,
       logits_maia,
       logits_value,
-      legalMoves,
+      legalMoves
     );
 
     return {
@@ -86,7 +84,7 @@ class Maia {
   async batchEvaluate(
     boards: string[],
     eloSelfs: number[],
-    eloOppos: number[],
+    eloOppos: number[]
   ) {
     const batchSize = boards.length;
     const boardInputs = [];
@@ -123,12 +121,12 @@ class Maia {
       elo_self: new ort.Tensor(
         "int64",
         BigInt64Array.from(eloSelfCategories.map(BigInt)),
-        [batchSize],
+        [batchSize]
       ),
       elo_oppo: new ort.Tensor(
         "int64",
         BigInt64Array.from(eloOppoCategories.map(BigInt)),
-        [batchSize],
+        [batchSize]
       ),
     };
 
@@ -145,7 +143,7 @@ class Maia {
 
       const policyLogitsArray = logits_maia.data.slice(
         startIdx,
-        endIdx,
+        endIdx
       ) as Float32Array;
       const policyTensor = new ort.Tensor("float32", policyLogitsArray, [
         logitsPerItem,
@@ -157,7 +155,7 @@ class Maia {
         boards[i],
         policyTensor,
         valueTensor,
-        legalMoves[i],
+        legalMoves[i]
       );
 
       results.push({ policy, value: winProb });
@@ -183,7 +181,7 @@ function processOutputs(
   fen: string,
   logits_maia: ort.Tensor,
   logits_value: ort.Tensor,
-  legalMoves: Float32Array,
+  legalMoves: Float32Array
 ) {
   const logits = logits_maia.data as Float32Array;
   const value = logits_value.data as Float32Array;

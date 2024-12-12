@@ -1,7 +1,8 @@
 "use client";
 
+import Maia from "maia2";
+import Link from "next/link";
 import { Chess } from "chess.js";
-import Maia from "./maia2/model";
 import { DrawShape } from "chessground/draw";
 import { Dests, Key } from "chessground/types";
 import "chessground/assets/chessground.base.css";
@@ -9,7 +10,6 @@ import "chessground/assets/chessground.brown.css";
 import Chessground from "@react-chess/chessground";
 import "chessground/assets/chessground.cburnett.css";
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 
 export default function Home() {
   const [loaded, setLoaded] = useState(false);
