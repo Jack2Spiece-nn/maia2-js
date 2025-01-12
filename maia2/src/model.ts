@@ -6,11 +6,20 @@ class Maia {
   public Ready: Promise<boolean>;
   public model!: ort.InferenceSession;
 
-  constructor(options: { modelPath: string }) {
+  constructor(options: {
+    modelPath: string;
+    wasmPaths?: ort.Env.WasmPrefixOrFilePaths;
+  }) {
     this.Ready = new Promise(async (resolve, reject) => {
       try {
         const buffer = await this.getCachedModel(options.modelPath);
+
+        if (options.wasmPaths) {
+          ort.env.wasm.wasmPaths = options.wasmPaths;
+        }
+
         this.model = await ort.InferenceSession.create(buffer);
+
         resolve(true);
       } catch (e) {
         reject(e);

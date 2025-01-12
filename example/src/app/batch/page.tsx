@@ -1,6 +1,6 @@
 "use client";
 
-import Maia from "maia2";
+import Maia from "../../../../maia2/dist/src/model";
 import openings from "./openings.json";
 import { Key } from "chessground/types";
 import { DrawShape } from "chessground/draw";

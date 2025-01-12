@@ -49,6 +49,12 @@ class Maia {
         this.Ready = new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
             try {
                 const buffer = yield this.getCachedModel(options.modelPath);
+                console.log("bad!");
+                if (options.wasmPaths) {
+                    console.log("hello");
+                    console.log(options.wasmPaths);
+                    ort.env.wasm.wasmPaths = options.wasmPaths;
+                }
                 this.model = yield ort.InferenceSession.create(buffer);
                 resolve(true);
             }
