@@ -1,0 +1,5 @@
+[build]
+  base = "example"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

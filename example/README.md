@@ -36,3 +36,15 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-user/maia2-js)
+
+## Deploy on Netlify
+
+You can also host the example on [Netlify](https://www.netlify.com/). Use the button below to create a new Netlify project from your fork:
+
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository-url=https://github.com/your-user/maia2-js)
+
+Netlify reads the `netlify.toml` configuration at the repository root.
+
+## Deploy on Cloudflare Pages
+
+Another free option is [Cloudflare Pages](https://pages.cloudflare.com/). Connect your GitHub repository, set the project root to `example`, and follow [Cloudflare's Next.js guide](https://developers.cloudflare.com/pages/framework-guides/deploy-a-nextjs-site/) for more information.
