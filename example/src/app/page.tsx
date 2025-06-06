@@ -14,8 +14,8 @@ import Maia from "../../../maia2/dist/src/model";
 
 export default function Home() {
   const [loaded, setLoaded] = useState(false);
-  const [selfElo, setSelfElo] = useState(1100);
-  const [oppoElo, setOppoElo] = useState(1100);
+  const [selfElo, setSelfElo] = useState(1900);
+  const [oppoElo, setOppoElo] = useState(1900);
   const [board, setBoard] = useState<Chess>(
     new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
   );

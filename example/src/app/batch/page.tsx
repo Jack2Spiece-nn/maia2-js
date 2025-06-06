@@ -29,8 +29,8 @@ export default function Home() {
   >(
     openings.slice(0, count).map((fen) => ({
       fen,
-      selfElo: 1100,
-      oppoElo: 1100,
+      selfElo: 1900,
+      oppoElo: 1900,
       arrows: [],
     })),
   );
@@ -49,8 +49,8 @@ export default function Home() {
     setBoards(
       openings.slice(0, count).map((fen) => ({
         fen,
-        selfElo: 1100,
-        oppoElo: 1100,
+        selfElo: 1900,
+        oppoElo: 1900,
         arrows: [],
       })),
     );
@@ -60,8 +60,8 @@ export default function Home() {
     const start = performance.now();
     const evaluation = await model?.batchEvaluate(
       boards.map((b) => b.fen),
-      Array(BOARDS.length).fill(1100),
-      Array(BOARDS.length).fill(1100),
+      Array(BOARDS.length).fill(1900),
+      Array(BOARDS.length).fill(1900),
     );
 
     if (!evaluation) {
