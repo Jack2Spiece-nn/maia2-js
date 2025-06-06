@@ -18,7 +18,7 @@ Open <http://localhost:3000> to view the app.
 
 You can deploy the demo with one click using the button below:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-user/maia2-js)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/kevinjosethomas/maia2-js)
 
 The link will clone this repository into a new Vercel project and automatically build the Next.js app. Replace `your-user` with your GitHub account if you fork the repo first.
 
@@ -26,7 +26,7 @@ The link will clone this repository into a new Vercel project and automatically 
 
 If you prefer using [Netlify](https://www.netlify.com/), you can deploy from this repository as well:
 
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository-url=https://github.com/your-user/maia2-js)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository-url=https://github.com/kevinjosethomas/maia2-js)
 
 Netlify reads the `netlify.toml` file and builds the app from the `example/` directory.
 
